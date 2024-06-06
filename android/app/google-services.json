@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "617958281651",
+    "firebase_url": "https://isyeriegitimi-ece46-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "isyeriegitimi-ece46",
+    "storage_bucket": "isyeriegitimi-ece46.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617958281651:android:cb3bfec8ee3c54f279fbc6",
+        "android_client_info": {
+          "package_name": "com.example.etkinlik_takip_projesi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjnGiBM6ImBTmdiJq8tN8Dgf46zUJDIx8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
