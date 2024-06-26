@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/screen/ActicityList/activityAdd.dart';
 import 'package:etkinlik_takip_projesi/service/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -21,8 +23,11 @@ class _CalendarPageState extends State<CalendarScreen> {
   DateTime? _selectedDay;
   AuthService authService = AuthService();
   List<Event> _events = [];
+
   void _populateEventsFromFirestore() async {
-    Stream<QuerySnapshot> eventStream = await AuthService().tumEtkinlikler();
+    String companyName = Provider.of<UserProvider>(context).adminCompanyName;
+    Stream<QuerySnapshot> eventStream =
+        await AuthService().tumEtkinlikler(companyName);
 
     eventStream.listen((QuerySnapshot snapshot) {
       setState(() {
@@ -43,16 +48,16 @@ class _CalendarPageState extends State<CalendarScreen> {
   Stream? etkinlikStream;
   Timestamp? timestamp;
   getontheload() async {
-    etkinlikStream = await AuthService().tumEtkinlikler();
+    String companyName = Provider.of<UserProvider>(context).adminCompanyName;
+    etkinlikStream = await AuthService().tumEtkinlikler(companyName);
     setState(() {});
   }
 
   @override
-  void initState() {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     getontheload();
     _populateEventsFromFirestore();
-
-    super.initState();
   }
 
   TimeOfDay? _selectedTime;
@@ -64,14 +69,17 @@ class _CalendarPageState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String companyName = Provider.of<UserProvider>(context).adminCompanyName;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        backgroundColor: Colors.deepPurple,
         title: Column(
           children: [
-            const Text('Etkinlik Takvimi',
+            Text('${companyName} Etkinlik Takvimi',
                 style: TextStyle(
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 25)),
             SizedBox(
@@ -82,41 +90,31 @@ class _CalendarPageState extends State<CalendarScreen> {
         centerTitle: true,
       ),
       body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/takvim.png'),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(
-                  0.8), // Saydamlık oranını buradan ayarlayabilirsiniz
-              BlendMode.dstATop,
-            ),
-          ),
-        ),
+        padding: EdgeInsets.all(16.0),
+        color: Colors.white, // Arka plan rengini beyaz yapıyoruz
         child: Column(
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                  color: Color.fromARGB(230, 19, 10, 113).withOpacity(0.4)),
+                color: Colors.deepPurple.shade200,
+                borderRadius: BorderRadius.circular(12.0),
+              ),
               child: TableCalendar(
                 calendarStyle: CalendarStyle(
                   outsideTextStyle: TextStyle(
-                      fontWeight: FontWeight.w900, color: Colors.grey.shade400),
+                      fontWeight: FontWeight.w900, color: Colors.black),
                   defaultTextStyle: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: Colors.white), // Günlerin yazı rengi
+                      color: Colors.black), // Günlerin yazı rengi
                   weekendTextStyle: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: Colors.white), // Haftasonu günlerinin yazı rengi
+                      color: Colors.black), // Haftasonu günlerinin yazı rengi
                   selectedTextStyle:
                       TextStyle(color: Colors.white), // Seçili günün yazı rengi
                   todayTextStyle:
                       TextStyle(color: Colors.white), // Bugünün yazı rengi
                   todayDecoration: BoxDecoration(
-                    color: Color.fromARGB(
-                        230, 19, 10, 113), // Bugünün arka plan rengi
+                    color: Colors.deepPurple, // Bugünün arka plan rengi
                     shape: BoxShape.circle,
                   ),
                   selectedDecoration: BoxDecoration(
@@ -132,32 +130,31 @@ class _CalendarPageState extends State<CalendarScreen> {
                   titleTextStyle: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 20,
-                      color: Colors.white), // Başlık yazısının rengi
-
+                      color: Colors.black), // Başlık yazısının rengi
                   formatButtonTextStyle: TextStyle(
                       fontWeight: FontWeight.w900,
                       color: Colors.white), // Format butonu yazısının rengi
                   formatButtonDecoration: BoxDecoration(
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurple,
                     borderRadius: BorderRadius.circular(16.0),
                   ),
                   leftChevronIcon: Icon(
                     Icons.chevron_left,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                   rightChevronIcon: Icon(
                     Icons.chevron_right,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                   titleCentered: true,
                 ),
                 daysOfWeekStyle: DaysOfWeekStyle(
                   weekdayStyle: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: Colors.white), // Haftanın günlerinin yazı rengi
+                      color: Colors.black), // Haftanın günlerinin yazı rengi
                   weekendStyle: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: Colors.white), // Haftasonu günlerinin yazı rengi
+                      color: Colors.black), // Haftasonu günlerinin yazı rengi
                 ),
                 eventLoader: (day) {
                   // Etkinliklerin olduğu günleri bul
@@ -179,7 +176,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 focusedDay: _focusedDay,
                 startingDayOfWeek: StartingDayOfWeek.monday,
                 calendarFormat: _calendarFormat,
-                //Seçili günü yuvarlak içerisinde gösteriyor.
+                // Seçili günü yuvarlak içerisinde gösteriyor.
                 selectedDayPredicate: (day) {
                   return isSameDay(_selectedDay, day);
                 },
@@ -201,13 +198,13 @@ class _CalendarPageState extends State<CalendarScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text("Etkinlik Listesi",
                     style: TextStyle(
-                        color: Color.fromARGB(230, 19, 10, 113),
+                        color: Colors.deepPurple,
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         decoration: TextDecoration.underline)),
@@ -229,7 +226,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                     iconSize: 35,
                     icon: const Icon(
                       Icons.add_box_rounded,
-                      color: Color.fromARGB(230, 19, 10, 113),
+                      color: Colors.deepPurple,
                     ),
                   ),
                 ),
@@ -239,83 +236,81 @@ class _CalendarPageState extends State<CalendarScreen> {
               child: StreamBuilder(
                 stream: etkinlikStream,
                 builder: ((context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data.docs.length,
-                          itemBuilder: (context, index) {
-                            DocumentSnapshot ds = snapshot.data.docs[index];
-                            Timestamp timestamp = ds["date"];
-                            DateTime dateTime = timestamp.toDate();
-                            if (isSameDay(dateTime, _focusedDay)) {
-                              return Card(
-                                margin: EdgeInsets.only(
-                                    left: 15, right: 15, top: 5, bottom: 5),
-                                color: Color.fromARGB(255, 168, 200, 255),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
-                                child: ListTile(
-                                  title: Row(
+                  if (!snapshot.hasData) {
+                    return Text("");
+                  }
+                  return ListView.builder(
+                      itemCount: snapshot.data.docs.length,
+                      itemBuilder: (context, index) {
+                        DocumentSnapshot ds = snapshot.data.docs[index];
+                        Timestamp timestamp = ds["date"];
+                        DateTime dateTime = timestamp.toDate();
+                        if (isSameDay(dateTime, _focusedDay)) {
+                          return Card(
+                            margin: EdgeInsets.only(
+                                left: 15, right: 15, top: 5, bottom: 5),
+                            color: Colors.grey[200],
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                            child: ListTile(
+                              title: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    // Wrap the Text widget with Expanded
+                                    child: Text(
+                                      ds["title"],
+                                      style: TextStyle(
+                                        color: Colors.deepPurple,
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: Column(
+                                children: [
+                                  Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Expanded(
-                                        // Wrap the Text widget with Expanded
-                                        child: Text(
-                                          ds["title"],
-                                          style: TextStyle(
-                                            color: Color.fromARGB(
-                                                230, 19, 10, 113),
-                                            fontStyle: FontStyle.italic,
+                                      Text(
+                                        '${dateTime.day}/${dateTime.month}/${dateTime.year} ',
+                                        style: const TextStyle(
+                                            color: Colors.deepPurple,
                                             fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        ' ${dateTime.hour}:${dateTime.minute}',
+                                        style: const TextStyle(
+                                            color: Colors.deepPurple,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                     ],
                                   ),
-                                  subtitle: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '${dateTime.day}/${dateTime.month}/${dateTime.year} ',
-                                            style: const TextStyle(
-                                                color: Color.fromARGB(
-                                                    230, 19, 10, 113),
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            ' ${dateTime.hour}:${dateTime.minute}',
-                                            style: const TextStyle(
-                                                color: Color.fromARGB(
-                                                    230, 19, 10, 113),
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  onTap: () {
-                                    _showEventDetailsDialog(
-                                        context,
-                                        ds["title"],
-                                        ds["description"],
-                                        ds["date"],
-                                        ds["konum"],
-                                        ds["konumBaslik"]);
-                                  },
-                                ),
-                              );
-                            } else {
-                              return SizedBox.shrink();
-                            }
-                          })
-                      : const Text("Lütfen Etkinlik Ekleyiniz.");
+                                ],
+                              ),
+                              onTap: () {
+                                _showEventDetailsDialog(
+                                    context,
+                                    ds["title"],
+                                    ds["description"],
+                                    ds["date"],
+                                    ds["konum"],
+                                    ds["konumBaslik"]);
+                              },
+                            ),
+                          );
+                        } else {
+                          return SizedBox.shrink();
+                        }
+                      });
                 }),
               ),
             ),
@@ -369,7 +364,7 @@ class _CalendarPageState extends State<CalendarScreen> {
             title,
             style: const TextStyle(
               fontWeight: FontWeight.w900,
-              color: Color.fromARGB(255, 40, 119, 255),
+              color: Colors.deepPurple,
               fontSize: 30,
             ),
           ),
@@ -381,7 +376,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Konum Başlığı',
                 style: TextStyle(
                     decoration: TextDecoration.underline,
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurpleAccent,
                     fontSize: 20,
                     fontWeight: FontWeight.w900),
               ),
@@ -389,7 +384,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 '$locationInfo',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 20,
                 ),
               ),
@@ -397,7 +392,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Lokasyon Bilgileri',
                 style: TextStyle(
                     decoration: TextDecoration.underline,
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurpleAccent,
                     fontSize: 20,
                     fontWeight: FontWeight.w900),
               ),
@@ -405,7 +400,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Enlem: ${geoPoint.latitude}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 16,
                 ),
               ),
@@ -413,7 +408,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Boylam: ${geoPoint.longitude}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 16,
                 ),
               ),
@@ -421,7 +416,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Açıklama',
                 style: TextStyle(
                     decoration: TextDecoration.underline,
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurpleAccent,
                     fontSize: 20,
                     fontWeight: FontWeight.w900),
               ),
@@ -429,7 +424,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 '$description',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 20,
                 ),
               ),
@@ -437,7 +432,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Tarih: ',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
-                  color: Color.fromARGB(230, 19, 10, 113),
+                  color: Colors.deepPurpleAccent,
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
@@ -446,7 +441,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 '${event.day}/${event.month}/${event.year}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 20,
                 ),
               ),
@@ -454,7 +449,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 'Saat: ',
                 style: TextStyle(
                     decoration: TextDecoration.underline,
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurpleAccent,
                     fontSize: 20,
                     fontWeight: FontWeight.w900),
               ),
@@ -462,7 +457,7 @@ class _CalendarPageState extends State<CalendarScreen> {
                 '${event.hour}:${event.minute}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color.fromARGB(255, 126, 173, 255),
+                  color: Colors.black,
                   fontSize: 20,
                 ),
               ),

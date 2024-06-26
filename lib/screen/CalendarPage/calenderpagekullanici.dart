@@ -1,18 +1,22 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:etkinlik_takip_projesi/component/activityCard.dart';
+import 'package:etkinlik_takip_projesi/component/categoriesCard.dart';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/screen/GoogleMaps/mapNavigation.dart';
 import 'package:etkinlik_takip_projesi/service/auth_service.dart';
 import 'package:etkinlik_takip_projesi/service/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarScreenKullanici extends StatefulWidget {
   const CalendarScreenKullanici({
     super.key,
+    this.companyName,
   });
+  final String? companyName;
   @override
   _CalendarPageKullaniciState createState() => _CalendarPageKullaniciState();
 }
@@ -23,8 +27,13 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
   DateTime? _selectedDay;
   AuthService authService = AuthService();
   List<Event> _events = [];
+  String baslik = "";
+
   void _EventLoader() async {
-    Stream<QuerySnapshot> eventStream = await AuthService().tumEtkinlikler();
+    String companyName = Provider.of<UserProvider>(context).userCompanyName;
+
+    Stream<QuerySnapshot> eventStream =
+        await AuthService().tumEtkinlikler(companyName);
 
     eventStream.listen((QuerySnapshot snapshot) {
       setState(() {
@@ -32,97 +41,100 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
           Timestamp timestamp = doc["date"];
           DateTime dateTime = timestamp.toDate();
           return Event(
-            title: doc["title"],
-            description: doc["description"],
-            dateTime: dateTime,
-            time: TimeOfDay.fromDateTime(dateTime),
-          );
+              title: doc["title"],
+              description: doc["description"],
+              dateTime: dateTime,
+              time: TimeOfDay.fromDateTime(dateTime),
+              categories: doc["categories"],
+              companyName: doc["companyName"]);
         }).toList();
       });
     });
   }
 
   FirebaseFirestore firestore = FirebaseFirestore.instance;
-
   String? userEmail;
   String? userNumber;
   String? userName;
-  bool katildiMi = false;
 
-  void getUserActivity(String title, String description, Timestamp timestamp,
-      GeoPoint geoPoint, String locationTitle) async {
+  String? companyName;
+  List<String> idList = [];
+  void getUserActivity(String id, int sira) async {
     User? user = auth.currentUser;
 
     QuerySnapshot querySnapshot = await firestore
-        .collection("isyeriegitimi")
+        .collection("Company")
+        .doc(companyName)
+        .collection("Çalışan Listesi")
         .doc(user?.uid)
-        .collection("KatildigimEtkinlikler")
-        .where(
-          "title",
-          isEqualTo: title,
-        )
-        .where("description", isEqualTo: description)
-        .where("date", isEqualTo: timestamp)
-        .where("konum", isEqualTo: geoPoint)
-        .where("konumBaslik", isEqualTo: locationTitle)
+        .collection("KullanıcınınKatıldığıEtkinlikler")
         .get();
-    if (this.mounted) {
-      setState(() {
-        if (querySnapshot.docs.isNotEmpty) {
-          katildiMi = true;
+
+    if (querySnapshot.docs.isNotEmpty) {
+      querySnapshot.docs.forEach((doc) {
+        setState(() {});
+        if (doc.id == id) {
+          if (id.isNotEmpty) {
+            idList = querySnapshot.docs.map((doc) => doc.id).toList();
+          }
         } else {
-          katildiMi = false;
+          print("etkinliğe katılan kullanıcı bulunamadı");
         }
       });
+    } else {
+      print("Belirtilen koşullara uygun belge bulunamadı.");
     }
   }
 
   void _getUsers() async {
     User? user = auth.currentUser;
-    String? email = user?.email;
 
-    QuerySnapshot querySnapshot = await firestore
-        .collection("isyeriegitimi")
-        .where("email", isEqualTo: email)
-        .get();
+    // Check if the user is not null
+    if (user != null) {
+      // Get the document snapshot directly
+      DocumentSnapshot docSnapshot =
+          await firestore.collection("Users").doc(user.uid).get();
 
-    if (querySnapshot.docs.isNotEmpty) {
-      DocumentSnapshot doc = querySnapshot.docs.first;
-
-      setState(() {
-        userEmail = doc["email"];
-        userNumber = doc["number"];
-        userName = doc["username"];
-      });
+      // Check if the document exists
+      if (docSnapshot.exists) {
+        setState(() {
+          userEmail = docSnapshot["email"];
+          companyName = docSnapshot["companyName"];
+          userName = docSnapshot["username"];
+          userNumber = docSnapshot["number"];
+        });
+      } else {
+        // Handle the case where the document does not exist
+        print("Document does not exist");
+      }
+    } else {
+      // Handle the case where the user is null
+      print("User is not signed in");
     }
   }
 
   Stream? etkinlikStream;
   Timestamp? timestamp;
+
   getontheload() async {
-    etkinlikStream = await AuthService().tumEtkinlikler();
+    String companyName = Provider.of<UserProvider>(context).userCompanyName;
+
+    etkinlikStream = await AuthService().tumEtkinlikler(companyName);
     setState(() {});
   }
 
-  @override
-  void initState() {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     getontheload();
-    _getUsers();
     _EventLoader();
-    super.initState();
+    _getUsers();
   }
 
-  TextEditingController _titleController = TextEditingController();
-  TextEditingController _descriptionController = TextEditingController();
-  TextEditingController _dateController = TextEditingController();
-  TextEditingController _timeController = TextEditingController();
-
-  TimeOfDay? _selectedTime;
   DateTime? _selectedDate;
   @override
   void setState(VoidCallback fn) {
     _selectedDate;
-    katildiMi;
+    idList;
     // TODO: implement setState
     super.setState(fn);
   }
@@ -131,7 +143,6 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
 
   @override
   Widget build(BuildContext context) {
-    DocumentSnapshot? documentSnapshot;
     User? user = auth.currentUser;
     String? id = user?.uid ?? "";
 
@@ -140,58 +151,56 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
         automaticallyImplyLeading: false,
         title: Column(
           children: [
-            const Text('Etkinlik Takvimi',
-                style: TextStyle(
-                    color: Color.fromARGB(230, 19, 10, 113),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 25)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (companyName != null)
+                  Text('${companyName} ',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 25)),
+                Text('Etkinlik Takvimi',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 25)),
+              ],
+            ),
             SizedBox(
               height: 2,
             ),
           ],
         ),
         centerTitle: true,
+        backgroundColor: Colors.deepPurple,
       ),
       body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/takvim.png'),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(
-                  0.8), // Saydamlık oranını buradan ayarlayabilirsiniz
-              BlendMode.dstATop,
-            ),
-          ),
-        ),
+        padding: EdgeInsets.all(4),
+        color: Colors.white,
         child: Column(
           children: [
             if (userName != null)
-              Container(
-                color: Color.fromARGB(230, 19, 10, 113).withOpacity(0.4),
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        "$userName",
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            decoration: TextDecoration.underline,
-                            decorationColor: Colors.black),
-                      ),
-                    ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    "$userName",
+                    style: const TextStyle(
+                        color: Colors.deepPurple,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.black),
                   ),
-                ),
+                ],
               ),
-            DecoratedBox(
+            const SizedBox(height: 10),
+            Container(
               decoration: BoxDecoration(
-                  color: Color.fromARGB(230, 19, 10, 113).withOpacity(0.4)),
+                color: Colors.deepPurple,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: TableCalendar(
                 calendarStyle: CalendarStyle(
                   outsideTextStyle: TextStyle(
@@ -207,12 +216,13 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
                   todayTextStyle:
                       TextStyle(color: Colors.white), // Bugünün yazı rengi
                   todayDecoration: BoxDecoration(
-                    color: Color.fromARGB(
-                        230, 19, 10, 113), // Bugünün arka plan rengi
+                    color:
+                        Colors.deepPurple.shade900, // Bugünün arka plan rengi
                     shape: BoxShape.circle,
                   ),
                   selectedDecoration: BoxDecoration(
-                    color: Colors.purple, // Seçili günün arka plan rengi
+                    color:
+                        Colors.purple.shade700, // Seçili günün arka plan rengi
                     shape: BoxShape.circle,
                   ),
                   markerDecoration: BoxDecoration(
@@ -230,7 +240,7 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
                       fontWeight: FontWeight.w900,
                       color: Colors.white), // Format butonu yazısının rengi
                   formatButtonDecoration: BoxDecoration(
-                    color: Color.fromARGB(230, 19, 10, 113),
+                    color: Colors.deepPurple.shade900,
                     borderRadius: BorderRadius.circular(16.0),
                   ),
                   leftChevronIcon: Icon(
@@ -242,6 +252,10 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
                     color: Colors.white,
                   ),
                   titleCentered: true,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
                 daysOfWeekStyle: DaysOfWeekStyle(
                   weekdayStyle: TextStyle(
@@ -295,11 +309,23 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
             ),
             const SizedBox(height: 10),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildCategoryButton("Gezi", Icons.flight),
+                _buildCategoryButton(
+                    "Toplantı", Icons.video_camera_front_outlined),
+                _buildCategoryButton("Eğitim", Icons.edit_calendar),
+                _buildCategoryButton("Sosyal", Icons.people),
+                _buildCategoryButton("Kültürel", Icons.theater_comedy),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Etkinlik Listesi",
+                Text("Etkinlik Listesi",
                     style: TextStyle(
-                        color: Color.fromARGB(230, 19, 10, 113),
+                        color: Colors.deepPurple,
                         fontSize: 25,
                         fontWeight: FontWeight.w900,
                         decoration: TextDecoration.underline)),
@@ -308,243 +334,212 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
             Expanded(
               child: StreamBuilder(
                 stream: etkinlikStream,
-                builder: ((context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data.docs.length,
-                          itemBuilder: (context, index) {
-                            DocumentSnapshot ds = snapshot.data.docs[index];
-                            Timestamp timestamp = ds["date"];
-                            DateTime dateTime = timestamp.toDate();
-                            if (isSameDay(dateTime, _focusedDay!)) {
-                              getUserActivity(
-                                  ds["title"],
-                                  ds["description"],
-                                  timestamp,
-                                  ds["konum"],
-                                  ds["konumBaslik"]); // Kullanıcının etkinliğe katılıp katılmadığını kontrol et
-                              // katildiMi bayrağını güncelle
+                builder: (context, AsyncSnapshot snapshot) {
+                  if (!snapshot.hasData) {
+                    return Center(
+                      child: Text("Lütfen Etkinlik Ekleyiniz."),
+                    );
+                  }
 
-                              return Card(
-                                margin: EdgeInsets.only(
-                                    left: 15, right: 15, top: 5, bottom: 5),
-                                color: Color.fromARGB(255, 168, 200, 255),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
-                                child: ListTile(
-                                  title: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        // Wrap the Text widget with Expanded
-                                        child: Text(
+                  return ListView.builder(
+                    itemCount: snapshot.data.docs.length,
+                    itemBuilder: (context, index) {
+                      DocumentSnapshot ds = snapshot.data.docs[index];
+                      Timestamp timestamp = ds["date"];
+                      DateTime dateTime = timestamp.toDate();
+                      getUserActivity(ds.id, index);
+
+                      bool isUserJoined = idList.contains(ds.id);
+                      if (isSameDay(dateTime, _focusedDay)) {
+                        return Card(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                          color: Colors.deepPurple.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: ListTile(
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    ds["title"],
+                                    style: const TextStyle(
+                                      color: Colors.deepPurple,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isUserJoined)
+                                  const Text(
+                                    "Katıldınız",
+                                    style: TextStyle(
+                                      color: Colors.deepPurple,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w900,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  )
+                                else
+                                  IconButton(
+                                    iconSize: 35,
+                                    onPressed: () {
+                                      setState(() {});
+                                      if (userEmail != null &&
+                                          companyName != null) {
+                                        authService.etkinligeKatilanKullanici(
+                                          companyName!,
+                                          id,
+                                          ds.id,
+                                          userEmail!,
+                                          userName!,
+                                          userNumber!,
+                                        );
+                                        authService.etkinlikKatil(
+                                          companyName!,
+                                          ds.id,
                                           ds["title"],
-                                          style: const TextStyle(
-                                              color: Color.fromARGB(
-                                                  230, 19, 10, 113),
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900),
-                                          overflow: TextOverflow.ellipsis,
+                                          ds["description"],
+                                          dateTime,
+                                          ds["konum"],
+                                          ds["konumBaslik"],
+                                          ds["categories"],
+                                          ds["companyName"],
+                                        );
+                                      } else {
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: const Text(
+                                                "Ekleme İşleminiz Tamamlanamadı!! Lütfen Takvimin Üzerinde Kullanıcı İsminiz Görünene Kadar Bekleyiniz",
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: const Text('Tamam'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      }
+                                    },
+                                    icon: const Icon(
+                                      Icons.check_box,
+                                      color: Colors.deepPurple,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            subtitle: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${dateTime.day}/${dateTime.month}/${dateTime.year} ',
+                                      style: const TextStyle(
+                                        color: Colors.deepPurple,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    Text(
+                                      ' ${dateTime.hour}:${dateTime.minute}',
+                                      style: const TextStyle(
+                                        color: Colors.deepPurple,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                MapsNavigation(
+                                              geoPointLast: ds["konum"],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        "Konuma Git",
+                                        style: TextStyle(
+                                          color: Colors.deepPurple.shade700,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 20,
+                                          decoration: TextDecoration.underline,
                                         ),
                                       ),
-                                      katildiMi
-                                          ? const Text(
-                                              "Katıldınız",
-                                              style: TextStyle(
-                                                  color: Color.fromARGB(
-                                                      230, 19, 10, 113),
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.w900,
-                                                  fontStyle: FontStyle.italic),
-                                            )
-                                          : IconButton(
-                                              iconSize: 35,
-                                              onPressed: () {
-                                                if (userEmail != null &&
-                                                    userNumber != null &&
-                                                    userName != null) {
-                                                  authService
-                                                      .etkinligeKatilanKullanici(
-                                                          id,
-                                                          ds.id,
-                                                          userEmail!,
-                                                          userName!,
-                                                          userNumber!);
-                                                  authService.etkinlikKatil(
-                                                      ds.id,
-                                                      ds["title"],
-                                                      ds["description"],
-                                                      dateTime,
-                                                      ds["konum"],
-                                                      ds["konumBaslik"]);
-                                                } else {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      return AlertDialog(
-                                                        title: const Text(
-                                                          "Ekleme İşleminiz Tamamlanamadı!! Lütfen Takvimin Üzerinde Kullanıcı İsminiz Görünene Kadar Bekleyiniz",
-                                                          style: TextStyle(
-                                                              fontSize: 30,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              decoration:
-                                                                  TextDecoration
-                                                                      .underline),
-                                                        ),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.pop(
-                                                                  context);
-                                                            },
-                                                            child: const Text(
-                                                                'Tamam'),
-                                                          ),
-                                                        ],
-                                                      );
-                                                    },
-                                                  );
-                                                }
-                                              },
-                                              icon: const Icon(
-                                                Icons.check_box,
-                                                color: Color.fromARGB(
-                                                    230, 19, 10, 113),
-                                              ),
-                                            ),
-                                    ],
-                                  ),
-                                  subtitle: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '${dateTime.day}/${dateTime.month}/${dateTime.year} ',
-                                            style: const TextStyle(
-                                                color: Color.fromARGB(
-                                                    230, 19, 10, 113),
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w900),
-                                          ),
-                                          Text(
-                                            ' ${dateTime.hour}:${dateTime.minute}',
-                                            style: const TextStyle(
-                                                color: Color.fromARGB(
-                                                    230, 19, 10, 113),
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w900),
-                                          ),
-                                        ],
+                                    ),
+                                    IconButton(
+                                      onPressed: () async {
+                                        DateTime? selectedDateTime =
+                                            await _selectDateTime(context);
+                                        if (selectedDateTime != null) {
+                                          NotificationService
+                                              .scheduleAlarmNotification(
+                                            title: ds["title"],
+                                            body: '${ds["description"]}',
+                                            dateTime: selectedDateTime,
+                                          );
+                                        }
+                                      },
+                                      icon: Icon(
+                                        Icons.alarm_add,
+                                        color: Colors.deepPurple.shade700,
+                                        size: 30,
                                       ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        MapsNavigation(
-                                                            geoPointLast:
-                                                                ds["konum"]),
-                                                  ));
-                                            },
-                                            child: Text("Konuma Git",
-                                                style: TextStyle(
-                                                    color:
-                                                        Colors.purple.shade700,
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 20,
-                                                    decoration: TextDecoration
-                                                        .underline)),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          ElevatedButton(
-                                            style: TextButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.purple.shade700),
-                                            onPressed: () {
-                                              DateTime scheduledTime =
-                                                  DateTime.now().add(
-                                                      Duration(seconds: 5));
-                                              NotificationService
-                                                  .scheduleAlarmNotification(
-                                                title: ds["title"],
-                                                body: '${ds["description"]}',
-                                                dateTime: scheduledTime,
-                                              );
-                                            },
-                                            child: Text(
-                                              'Alarm Test',
-                                              style: TextStyle(
-                                                  fontSize: 17,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Color.fromARGB(
-                                                      230, 19, 10, 113)),
-                                            ),
-                                          ),
-                                          ElevatedButton(
-                                            style: TextButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.purple.shade700),
-                                            onPressed: () async {
-                                              DateTime? selectedDateTime =
-                                                  await _selectDateTime(
-                                                      context);
-                                              if (selectedDateTime != null) {
-                                                NotificationService
-                                                    .scheduleAlarmNotification(
-                                                  title: ds["title"],
-                                                  body: '${ds["description"]}',
-                                                  dateTime: selectedDateTime,
-                                                );
-                                              }
-                                            },
-                                            child: Text(
-                                              'Alarm Kur',
-                                              style: TextStyle(
-                                                  fontSize: 17,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Color.fromARGB(
-                                                      230, 19, 10, 113)),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ActivityCard(
+                                    title: ds["title"] ?? '',
+                                    description: ds["description"] ?? '',
+                                    categories: ds["categories"] ?? '',
+                                    companyName: ds["companyName"] ?? '',
+                                    konumBaslik: ds["konumBaslik"] ?? '',
+                                    geoPoint: ds["konum"] ?? GeoPoint(0, 0),
+                                    datetime: dateTime,
                                   ),
-                                  onTap: () {
-                                    _showEventDetailsDialog(
-                                        context,
-                                        ds["title"],
-                                        ds["description"],
-                                        ds["date"],
-                                        ds["konum"],
-                                        ds["konumBaslik"]);
-                                  },
                                 ),
                               );
-                            } else {
-                              return SizedBox.shrink();
-                            }
-                          })
-                      : const Text("Lütfen Etkinlik Ekleyiniz.");
-                }),
+                            },
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
-            ),
+            )
           ],
         ),
       ),
@@ -579,177 +574,35 @@ class _CalendarPageKullaniciState extends State<CalendarScreenKullanici> {
     return null; // Seçim yapılmadıysa null döndür
   }
 
-  void _showEventDetailsDialog(
-    BuildContext context,
-    String title,
-    String description,
-    Timestamp timestamp,
-    GeoPoint geoPoint,
-    String locationTitle,
-  ) {
-    DateTime dateTime = timestamp.toDate();
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color.fromARGB(255, 211, 207, 255),
-          title: Text(
-            title,
-            style: const TextStyle(
-                color: Color.fromARGB(230, 19, 10, 113),
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
-                decoration: TextDecoration.underline),
+  Widget _buildCategoryButton(String label, IconData icon) {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.shade700,
+            borderRadius: BorderRadius.circular(50),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Konum Başlığı: ",
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            color: Colors.purple.shade700,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          locationTitle,
-                          style: const TextStyle(
-                            color: Color.fromARGB(230, 19, 10, 113),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          "Lokasyon Bilgileri: ",
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            color: Colors.purple.shade700,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Enlem: ",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              "${geoPoint.latitude}",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              "Boylam: ",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              "${geoPoint.longitude} ",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "Açıklama: ",
-                          style: TextStyle(
-                            decoration: TextDecoration.underline,
-                            color: Colors.purple.shade700,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            color: Color.fromARGB(230, 19, 10, 113),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              "Tarih: ",
-                              style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                color: Colors.purple.shade700,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              "${dateTime.day}/${dateTime.month}/${dateTime.year}",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              "Saat: ",
-                              style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                color: Colors.purple.shade700,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              "${dateTime.hour}:${dateTime.minute}",
-                              style: const TextStyle(
-                                color: Color.fromARGB(230, 19, 10, 113),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Tamam'),
+          child: IconButton(
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CategoriesCard(categories: label),
+                )),
+            icon: Icon(
+              icon,
+              color: Colors.white,
+              size: 25,
             ),
-          ],
-        );
-      },
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+              color: Colors.deepPurple,
+              fontSize: 20,
+              fontWeight: FontWeight.w900),
+        )
+      ],
     );
   }
 }
@@ -759,11 +612,15 @@ class Event {
   final String description;
   final DateTime dateTime;
   final TimeOfDay time;
+  final String categories;
+  final String companyName;
 
   Event({
     required this.title,
     required this.description,
     required this.dateTime,
     required this.time,
+    required this.categories,
+    required this.companyName,
   });
 }

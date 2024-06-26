@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/firebase_options.dart';
 import 'package:etkinlik_takip_projesi/screen/ActicityList/activitylist.dart';
 import 'package:etkinlik_takip_projesi/screen/ActicityList/activitylistkullanici.dart';
@@ -13,15 +15,21 @@ import 'package:etkinlik_takip_projesi/service/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   await NotificationService.initializeNotification();
   initializeDateFormatting();
-  runApp(
-    const MyApp(),
-  );
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MyApp(),
+    ),
   );
 }
 

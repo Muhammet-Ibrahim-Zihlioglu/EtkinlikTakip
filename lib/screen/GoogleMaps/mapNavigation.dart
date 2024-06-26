@@ -29,7 +29,7 @@ class MapNavigationState extends State<MapsNavigation> {
           position: LatLng(
               widget.geoPointLast!.latitude, widget.geoPointLast!.longitude),
           icon:
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
         );
       }
     });
@@ -58,12 +58,12 @@ class MapNavigationState extends State<MapsNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.amber.shade50,
+        backgroundColor: Colors.deepPurple,
         centerTitle: true,
         title: Text("Google Haritalar",
             style: TextStyle(
                 fontWeight: FontWeight.w900,
-                color: Color.fromARGB(230, 19, 10, 113),
+                color: Colors.white,
                 fontSize: 25)),
       ),
       floatingActionButton: Padding(
@@ -74,7 +74,7 @@ class MapNavigationState extends State<MapsNavigation> {
             Container(
               height: 50,
               width: 150,
-              color: Colors.amber.shade50,
+              color: Colors.deepPurple.shade200,
               child: GestureDetector(
                 onTap: () async {
                   if (widget.geoPointLast != null) {
@@ -85,7 +85,7 @@ class MapNavigationState extends State<MapsNavigation> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.my_location_outlined, color: Colors.black),
+                    Icon(Icons.directions, color: Colors.black),
                     Text("Yol Tarifi",
                         style: TextStyle(
                             color: Colors.black,

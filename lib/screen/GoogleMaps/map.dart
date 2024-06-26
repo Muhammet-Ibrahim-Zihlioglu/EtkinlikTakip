@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-//geri dönüşü kapat
 class MapSample extends StatefulWidget {
   MapSample({super.key, this.geo, this.loctitle});
   GeoPoint? geo;
@@ -65,13 +65,13 @@ class MapSampleState extends State<MapSample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.amber.shade50,
+        backgroundColor: Colors.deepPurple,
         automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text('Google Haritalar',
             style: TextStyle(
                 fontWeight: FontWeight.w900,
-                color: Color.fromARGB(230, 19, 10, 113),
+                color: Colors.white,
                 fontSize: 25)),
       ),
       floatingActionButton: Padding(
@@ -80,7 +80,7 @@ class MapSampleState extends State<MapSample> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              color: Colors.amber.shade50,
+              color: Colors.deepPurple,
               height: 50,
               child: TextButton(
                   onPressed: () => Navigator.pop(context, {
@@ -90,8 +90,7 @@ class MapSampleState extends State<MapSample> {
                   child: Text(
                     "Konumu Kaydet",
                     style: TextStyle(
-                        decoration: TextDecoration.underline,
-                        color: Color.fromARGB(230, 19, 10, 113),
+                        color: Colors.white,
                         fontWeight: FontWeight.w900,
                         fontSize: 20),
                   )),
@@ -114,11 +113,11 @@ class MapSampleState extends State<MapSample> {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: Colors.deepPurple.shade50,
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.amber.shade100,
+                    color: Colors.deepPurple,
                     blurRadius: 10,
                   ),
                 ],
@@ -129,7 +128,7 @@ class MapSampleState extends State<MapSample> {
                   hintText: 'Lütfen Bir Konum Giriniz',
                   hintStyle: TextStyle(
                       fontSize: 16,
-                      color: Color.fromARGB(230, 19, 10, 113),
+                      color: Colors.deepPurple,
                       decoration: TextDecoration.underline,
                       fontWeight: FontWeight.w900),
                   border: InputBorder.none,
@@ -160,7 +159,16 @@ class MapSampleState extends State<MapSample> {
                     Container(
                       width: 220,
                       height: 40,
-                      color: Colors.amber.shade50,
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepPurple,
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
                       child: TextField(
                         controller: _enlem, // _enlem burada kullanılmalı.
                         decoration: InputDecoration(
@@ -169,7 +177,7 @@ class MapSampleState extends State<MapSample> {
                               : 'Konuma Ait Enlem Bilgisi',
                           hintStyle: const TextStyle(
                               fontSize: 16,
-                              color: Color.fromARGB(230, 19, 10, 113),
+                              color: Colors.deepPurple,
                               decoration: TextDecoration.underline,
                               fontWeight: FontWeight.w900),
                           border: InputBorder.none,
@@ -185,16 +193,25 @@ class MapSampleState extends State<MapSample> {
                     Container(
                       width: 220,
                       height: 40,
-                      color: Colors.amber.shade50,
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepPurple,
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
                       child: TextField(
                         controller: _boylam,
                         decoration: InputDecoration(
                           hintText: _searchedLatLng != null
                               ? 'Boylam: ${_searchedLatLng?.longitude}'
-                              : 'Konuma Ait Boylam Bilgisi',
+                              : ' Konuma Ait Boylam Bilgisi',
                           hintStyle: const TextStyle(
                               fontSize: 16,
-                              color: Color.fromARGB(230, 19, 10, 113),
+                              color: Colors.deepPurple,
                               decoration: TextDecoration.underline,
                               fontWeight: FontWeight.w900),
                           border: InputBorder.none,
@@ -212,7 +229,7 @@ class MapSampleState extends State<MapSample> {
                     Container(
                       height: 40,
                       width: 100,
-                      color: Colors.amber.shade50,
+                      color: Colors.purple.shade50,
                       child: Row(
                         children: [
                           IconButton(
@@ -238,7 +255,7 @@ class MapSampleState extends State<MapSample> {
                             },
                             icon: Icon(
                               Icons.info,
-                              color: Color.fromARGB(230, 19, 10, 113),
+                              color: Colors.deepPurple,
                             ),
                           ),
                           IconButton(
@@ -249,7 +266,7 @@ class MapSampleState extends State<MapSample> {
                               },
                               icon: const Icon(
                                 Icons.search,
-                                color: Color.fromARGB(230, 19, 10, 113),
+                                color: Colors.deepPurple,
                               )),
                         ],
                       ),
@@ -296,31 +313,45 @@ class MapSampleState extends State<MapSample> {
 
   Future<void> _searchAndNavigate() async {
     String searchAddress = _searchController.text;
+    String key = "AIzaSyAwIASegAbabeyMJfkTRwXpdMyPxULHlCs";
     try {
-      List<Location> locations = await locationFromAddress(searchAddress);
-      if (locations.isNotEmpty) {
-        final location = locations.first;
-        final GoogleMapController controller = await _controller.future;
-        CameraPosition newPosition = CameraPosition(
-          target: LatLng(location.latitude, location.longitude),
-          zoom: 14,
-        );
-        controller.animateCamera(CameraUpdate.newCameraPosition(newPosition));
-
-        setState(() {
-          _markers.clear();
-          _markers.add(
-            Marker(
-              markerId: MarkerId(searchAddress),
-              position: LatLng(location.latitude, location.longitude),
-              infoWindow: InfoWindow(
-                title: searchAddress,
-              ),
-            ),
+      var url =
+          'https://maps.googleapis.com/maps/api/geocode/json?address=$searchAddress&key=$key';
+      var response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        if (data['status'] == 'OK') {
+          var location = data['results'][0]['geometry']['location'];
+          double latitude = location['lat'];
+          double longitude = location['lng'];
+          final GoogleMapController controller = await _controller.future;
+          CameraPosition newPosition = CameraPosition(
+            target: LatLng(latitude, longitude),
+            zoom: 14,
           );
-          _searchedLatLng = GeoPoint(location.latitude, location.longitude);
-          locationTitle = searchAddress;
-        });
+          controller.animateCamera(CameraUpdate.newCameraPosition(newPosition));
+
+          setState(() {
+            _markers.clear();
+            _markers.add(
+              Marker(
+                markerId: MarkerId(searchAddress),
+                position: LatLng(latitude, longitude),
+                infoWindow: InfoWindow(
+                  title: searchAddress,
+                ),
+              ),
+            );
+            _searchedLatLng = GeoPoint(latitude, longitude);
+            locationTitle = searchAddress;
+          });
+        } else {
+          throw Exception(
+              'Geocoding request failed with status: ${data['status']}');
+        }
+      } else {
+        throw Exception(
+            'HTTP request failed with status: ${response.statusCode}');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

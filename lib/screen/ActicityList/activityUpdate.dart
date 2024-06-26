@@ -1,158 +1,213 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/screen/GoogleMaps/map.dart';
 import 'package:etkinlik_takip_projesi/service/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ActivityUpdate extends StatefulWidget {
   ActivityUpdate({
-    super.key,
+    Key? key,
     this.id,
     this.title,
     this.locationInfo,
     this.location,
     this.description,
+    this.categories,
     this.dateTime,
-  });
+  }) : super(key: key);
+
   String? id;
   String? title;
+  String? categories;
   String? description;
   String? locationInfo;
   GeoPoint? location;
   DateTime? dateTime;
+
   @override
   State<ActivityUpdate> createState() => _ActivityUpdateState();
 }
 
 class _ActivityUpdateState extends State<ActivityUpdate> {
-  AuthService authService = AuthService();
-  TextEditingController titleController = TextEditingController();
-  TextEditingController descriptionController = TextEditingController();
-  TextEditingController dateController = TextEditingController();
-  TextEditingController timeController = TextEditingController();
-  TextEditingController mapsController = TextEditingController();
-  TextEditingController mapsInfoController = TextEditingController();
+  final AuthService _authService = AuthService();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _timeController = TextEditingController();
+  final TextEditingController _mapsController = TextEditingController();
+  final TextEditingController _mapsInfoController = TextEditingController();
+
+  List<String> categories = [
+    "Gezi",
+    "Toplantı",
+    "Eğitim",
+    "Sosyal",
+    "Kültürel"
+  ];
 
   @override
   void initState() {
     super.initState();
-    titleController.text = widget.title ?? '';
-    descriptionController.text = widget.description ?? '';
-    dateController.text = widget.dateTime != null
+    _titleController.text = widget.title ?? '';
+    _descriptionController.text = widget.description ?? '';
+    _dateController.text = widget.dateTime != null
         ? '${widget.dateTime!.day}/${widget.dateTime!.month}/${widget.dateTime!.year}'
         : '';
-    timeController.text = widget.dateTime != null
+    _timeController.text = widget.dateTime != null
         ? '${widget.dateTime!.hour}:${widget.dateTime!.minute.toString().padLeft(2, '0')}'
         : '';
-    mapsInfoController.text = widget.locationInfo ?? '';
-    mapsController.text = widget.location != null
+    _mapsInfoController.text = widget.locationInfo ?? '';
+    _mapsController.text = widget.location != null
         ? '${widget.location!.latitude}, ${widget.location!.longitude}'
         : '';
   }
 
   @override
   Widget build(BuildContext context) {
+    String companyName = Provider.of<UserProvider>(context).adminCompanyName;
+
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.deepPurple,
+        title: Text(
+          'Etkinlik Güncelle',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
         centerTitle: true,
-        title: Text('Etkinlik Güncelle',
-            style: TextStyle(
-                color: Color.fromARGB(230, 19, 10, 113),
-                fontWeight: FontWeight.bold,
-                fontSize: 25)),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            SizedBox(height: 16),
+            Text(
+              'Şirket: $companyName',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
+            ),
+            SizedBox(height: 16),
             TextField(
-              controller: titleController,
+              controller: _titleController,
               decoration: InputDecoration(
-                labelStyle: TextStyle(
-                  color: Color.fromARGB(230, 19, 10, 113),
-                  fontWeight: FontWeight.w900,
-                ),
                 labelText: "Başlık",
-                hintText: '${widget.title}',
+                labelStyle: TextStyle(
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                border: OutlineInputBorder(),
               ),
             ),
+            SizedBox(height: 12),
             TextField(
-              controller: mapsInfoController,
+              controller: _descriptionController,
+              maxLines: 3,
               decoration: InputDecoration(
                 labelStyle: TextStyle(
-                  color: Color.fromARGB(230, 19, 10, 113),
-                  fontWeight: FontWeight.w900,
-                ),
-                labelText: "Yol Tarifi",
-                hintText: '${widget.locationInfo}',
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                labelText: "Açıklama",
+                border: OutlineInputBorder(),
               ),
             ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.deepPurple),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: DropdownButtonFormField<String>(
+                value: widget.categories,
+                decoration: InputDecoration(
+                  labelStyle: TextStyle(
+                      color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                  labelText: "Kategori",
+                  border: InputBorder.none,
+                ),
+                items: categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    widget.categories = newValue!;
+                  });
+                },
+              ),
+            ),
+            SizedBox(height: 12),
             TextField(
-              controller: mapsController,
+              controller: _mapsController,
               decoration: InputDecoration(
                 labelStyle: TextStyle(
-                  color: Color.fromARGB(230, 19, 10, 113),
-                  fontWeight: FontWeight.w900,
-                ),
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
                 labelText: "Konum",
-                hintText: '${widget.location}',
+                border: OutlineInputBorder(),
               ),
               readOnly: true,
               onTap: () async {
                 var result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MapSample(
-                        geo: widget.location,
-                        loctitle: widget.locationInfo,
-                      ),
-                    ));
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MapSample(
+                      geo: widget.location,
+                      loctitle: widget.locationInfo,
+                    ),
+                  ),
+                );
                 setState(() {
                   if (result != null) {
-                    if (result["geo"] != null) {
+                    if (result["latlng"] != null) {
                       GeoPoint selectedLocation = result["latlng"];
-                      mapsController.text =
+                      _mapsController.text =
                           '${selectedLocation.latitude}, ${selectedLocation.longitude}';
                       widget.location = selectedLocation;
                     }
 
                     if (result["locationTitle"] != null) {
-                      mapsInfoController.text = result["locationTitle"];
+                      _mapsInfoController.text = result["locationTitle"];
                       widget.locationInfo = result["locationTitle"];
                     }
-                    mapsInfoController.text =
-                        mapsInfoController.text.toUpperCase();
+                    _mapsInfoController.text =
+                        _mapsInfoController.text.toUpperCase();
                   }
                 });
               },
             ),
+            SizedBox(height: 12),
             TextField(
-              controller: descriptionController,
+              controller: _mapsInfoController,
               decoration: InputDecoration(
                 labelStyle: TextStyle(
-                  color: Color.fromARGB(230, 19, 10, 113),
-                  fontWeight: FontWeight.w900,
-                ),
-                labelText: "Açıklama",
-                hintText: '${widget.description}',
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                labelText: "Yol Tarifi",
+                border: OutlineInputBorder(),
               ),
+              readOnly: true,
             ),
+            SizedBox(height: 12),
             TextField(
-              controller: dateController,
+              controller: _dateController,
               decoration: InputDecoration(
-                labelText: 'Tarih',
                 labelStyle: TextStyle(
-                  color: Color.fromARGB(230, 19, 10, 113),
-                  fontWeight: FontWeight.w900,
-                ),
-                hintText: widget.dateTime != null
-                    ? '${widget.dateTime!.day}/${widget.dateTime!.month}/${widget.dateTime!.year}'
-                    : '',
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                labelText: "Tarih",
+                border: OutlineInputBorder(),
               ),
               readOnly: true,
               onTap: () async {
+                DateTime initialDate = widget.dateTime ?? DateTime.now();
                 DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: widget.dateTime ?? DateTime.now(),
+                  initialDate: initialDate,
                   firstDate: DateTime.now(),
                   lastDate: DateTime.utc(2030, 12, 31),
                 );
@@ -165,23 +220,21 @@ class _ActivityUpdateState extends State<ActivityUpdate> {
                       widget.dateTime?.hour ?? 0,
                       widget.dateTime?.minute ?? 0,
                     );
-                    dateController.text =
+                    _dateController.text =
                         '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
                   });
                 }
               },
             ),
+            SizedBox(height: 12),
             TextField(
-              controller: timeController,
+              controller: _timeController,
               decoration: InputDecoration(
-                  labelStyle: TextStyle(
-                    color: Color.fromARGB(230, 19, 10, 113),
-                    fontWeight: FontWeight.w900,
-                  ),
-                  labelText: 'Saat',
-                  hintText: widget.dateTime != null
-                      ? '${widget.dateTime!.hour}:${widget.dateTime!.minute}'
-                      : ''),
+                labelStyle: TextStyle(
+                    color: Colors.deepPurple, fontWeight: FontWeight.w900),
+                labelText: "Saat",
+                border: OutlineInputBorder(),
+              ),
               readOnly: true,
               onTap: () async {
                 TimeOfDay? pickedTime = await showTimePicker(
@@ -198,47 +251,42 @@ class _ActivityUpdateState extends State<ActivityUpdate> {
                       pickedTime.hour,
                       pickedTime.minute,
                     );
-                    timeController.text =
+                    _timeController.text =
                         '${pickedTime.hour}:${pickedTime.minute.toString().padLeft(2, '0')}';
                   });
                 }
               },
             ),
-            SizedBox(height: 20),
-            Container(
-              height: 60,
-              width: 150,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 212, 184, 254),
-                ),
-                onPressed: () async {
-                  DateTime finalDateTime = widget.dateTime ?? DateTime.now();
-                  await authService.etkinlikGuncelle(
-                    widget.id!,
-                    titleController.text.isNotEmpty
-                        ? titleController.text
-                        : widget.title!,
-                    descriptionController.text.isNotEmpty
-                        ? descriptionController.text
-                        : widget.description!,
-                    finalDateTime,
-                    widget.location!,
-                    mapsInfoController.text.isNotEmpty
-                        ? mapsInfoController.text
-                        : widget.locationInfo!,
-                  );
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  "Güncelle",
-                  style: TextStyle(
-                      color: Color.fromARGB(230, 19, 10, 113),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 25),
+            SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () async {
+                DateTime finalDateTime = widget.dateTime ?? DateTime.now();
+                await _authService.etkinlikGuncelle(
+                  companyName,
+                  widget.id!,
+                  _titleController.text,
+                  _descriptionController.text,
+                  widget.categories!,
+                  companyName,
+                  finalDateTime,
+                  widget.location!,
+                  _mapsInfoController.text,
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                padding: EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: Text(
+                "Güncelle",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

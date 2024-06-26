@@ -35,7 +35,7 @@ class _BottomNavBarKullaniciState extends State<BottomNavBarKullanici> {
                   icon: Icon(
                     Icons.home_filled,
                     color: MenuStateKullanici.home == widget.selectedMenu
-                        ? Colors.black
+                        ? Colors.deepPurple.shade900
                         : inActiveIconColor,
                   ),
                   onPressed: () => {
@@ -46,7 +46,7 @@ class _BottomNavBarKullaniciState extends State<BottomNavBarKullanici> {
                   icon: Icon(
                     Icons.local_activity,
                     color: MenuStateKullanici.activity == widget.selectedMenu
-                        ? Colors.black
+                        ? Colors.deepPurple.shade900
                         : inActiveIconColor,
                   ),
                   onPressed: () {
@@ -57,7 +57,7 @@ class _BottomNavBarKullaniciState extends State<BottomNavBarKullanici> {
                   icon: Icon(
                     Icons.person,
                     color: MenuStateKullanici.profile == widget.selectedMenu
-                        ? Colors.black
+                        ? Colors.deepPurple.shade900
                         : inActiveIconColor,
                   ),
                   onPressed: () {

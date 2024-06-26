@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/service/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class UserInfo extends StatefulWidget {
   const UserInfo({super.key});
@@ -17,13 +19,15 @@ class _UserInfoState extends State<UserInfo> {
 
   // Bu metot initState içine taşınabilir
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     getontheload();
   }
 
   getontheload() async {
-    kullaniciStream = await authService.tumKullanicilar();
+    String companyName = Provider.of<UserProvider>(context).userCompanyName;
+
+    kullaniciStream = await authService.tumKullanicilar(companyName);
     setState(() {});
   }
 
@@ -31,24 +35,22 @@ class _UserInfoState extends State<UserInfo> {
 
   @override
   Widget build(BuildContext context) {
-    double genislik = MediaQuery.of(context).size.width;
     User? user = _auth.currentUser;
     String id = user?.uid ?? "";
     return Scaffold(
+      backgroundColor: Colors.deepPurple.shade50,
       appBar: AppBar(
-        title: Column(
-          children: [
-            const Text('Profilim',
-                style: TextStyle(
-                    color: Color.fromARGB(230, 19, 10, 113),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 25)),
-            SizedBox(
-              height: 2,
-            ),
-          ],
+        title: const Text(
+          'Profilim',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 25,
+          ),
         ),
         centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+        elevation: 0,
       ),
       body: StreamBuilder(
         stream: kullaniciStream,
@@ -59,94 +61,127 @@ class _UserInfoState extends State<UserInfo> {
               itemBuilder: (context, index) {
                 DocumentSnapshot ds = snapshot.data.docs[index];
                 if (ds.id == id) {
-                  return Container(
-                    width: MediaQuery.of(context).size.width,
-                    height: MediaQuery.of(context).size.height,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/profil.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 75),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Email: ",
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.purple.shade700,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                        vertical: MediaQuery.of(context).size.height / 4),
+                    child: Card(
+                      elevation: 40,
+                      color: Colors.deepPurple.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                            left: 20, right: 10, top: 10, bottom: 10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  ds["companyName"],
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.purple.shade800,
+                                    decoration: TextDecoration.underline,
+                                    decorationThickness: 2,
+                                    decorationColor:
+                                        Color.fromARGB(230, 19, 10, 113),
+                                    fontSize: 25,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                "${ds["email"]}",
-                                style: const TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Color.fromARGB(230, 19, 10, 113),
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                                Flexible(
+                                  child: Text(
+                                    " Şirket Çalışanı",
+                                    style: TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      decoration: TextDecoration.underline,
+                                      decorationThickness: 2,
+                                      color: Colors.purple.shade800,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Kullanıcı Adı: ",
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.purple.shade700,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                            SizedBox(height: 15),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Email: ",
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.purple.shade700,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                "${ds["username"]}",
-                                style: const TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Color.fromARGB(230, 19, 10, 113),
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                                Text(
+                                  "${ds["email"]}",
+                                  style: const TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Color.fromARGB(230, 19, 10, 113),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Telefon No: ",
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Colors.purple.shade700,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Kullanıcı Adı: ",
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.purple.shade700,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                "${ds["number"]}",
-                                style: const TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Color.fromARGB(230, 19, 10, 113),
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
+                                Flexible(
+                                  child: Text(
+                                    "${ds["username"]}",
+                                    style: const TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      color: Color.fromARGB(230, 19, 10, 113),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                            SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Telefon No: ",
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.purple.shade700,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "${ds["number"]}",
+                                  style: const TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Color.fromARGB(230, 19, 10, 113),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );

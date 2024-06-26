@@ -1,15 +1,21 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:etkinlik_takip_projesi/component/mytextfield.dart';
+import 'package:etkinlik_takip_projesi/component/provider.dart';
 import 'package:etkinlik_takip_projesi/component/registerbutton.dart';
 import 'package:etkinlik_takip_projesi/component/signbutton.dart';
+import 'package:etkinlik_takip_projesi/screen/Home/homepagekullanici.dart';
 import 'package:etkinlik_takip_projesi/screen/Register/register.dart';
 import 'package:etkinlik_takip_projesi/service/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatelessWidget {
   LoginPage({super.key});
   final AuthService authService = AuthService();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  String? companyName;
+  FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,41 +101,64 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  SignButton(onTap: () {
-                    if (emailController.text == 'selcuk' &&
-                        passwordController.text == 'selcuk') {
-                      return Navigator.pushReplacementNamed(context, "/home");
-                    }
-
+                  SignButton(onTap: () async {
                     RegExp gmailRegex = RegExp(r'^[\w-\.]+@gmail\.com$');
                     if (emailController.text.isNotEmpty &&
                         passwordController.text.isNotEmpty) {
-                      if (gmailRegex.hasMatch(emailController.text)) {
-                        authService
-                            .signIn(emailController.text,
-                                passwordController.text, context)
-                            .then((user) {
-                          if (user != null) {
-                            return Navigator.pushReplacementNamed(
-                                context, "/homekullanici");
-                          }
-                        });
+                      bool isCompany = await authService.companySignIn(
+                          emailController.text,
+                          passwordController.text,
+                          context);
+                      if (isCompany) {
+                        Provider.of<UserProvider>(context, listen: false)
+                            .setAdminCompanyName(emailController.text);
+                        authService.companySignIn(emailController.text,
+                            passwordController.text, context);
                       } else {
-                        showDialog(
-                            context: context,
-                            builder: (BuildContext context) => AlertDialog(
-                                  title: const Text('HATA'),
-                                  content:
-                                      const Text('Geçerli bir eposta giriniz.'),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Cancel')),
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Ok'))
-                                  ],
-                                ));
+                        if (gmailRegex.hasMatch(emailController.text)) {
+                          authService
+                              .signIn(emailController.text,
+                                  passwordController.text, context)
+                              .then((user) async {
+                            if (user != null) {
+                              DocumentSnapshot docSnapshot =
+                                  await firebaseFirestore
+                                      .collection("Users")
+                                      .doc(user.uid)
+                                      .get();
+
+                              if (docSnapshot.exists) {
+                                Provider.of<UserProvider>(context,
+                                        listen: false)
+                                    .setuserCompanyName(
+                                        docSnapshot["companyName"]);
+                              }
+                              return Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => HomePageKullanici(),
+                                  ));
+                            }
+                          });
+                        } else {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) => AlertDialog(
+                                    title: const Text('HATA'),
+                                    content: const Text(
+                                        'Geçerli bir eposta giriniz.'),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Cancel')),
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Ok'))
+                                    ],
+                                  ));
+                        }
                       }
                     } else {
                       showDialog(
